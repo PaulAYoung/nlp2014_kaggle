@@ -1,5 +1,5 @@
 
-# In[1]:
+# In[2]:
 
 import re
 import random
@@ -8,7 +8,7 @@ from os import path
 import nltk
 
 
-# In[2]:
+# In[3]:
 
 class TermScoreClassiffier(nltk.classify.ClassifierI):
     """
@@ -48,13 +48,15 @@ class TermScoreClassiffier(nltk.classify.ClassifierI):
         
         tokens = nltk.word_tokenize(text)
         scores = {}
+        
+        for c in self.terms.values()[0].keys():
+            scores[c]=0
+        
         for w in tokens:
             if w in self.terms:
                 for c,s in self.terms[w].iteritems():
-                    if c in scores:
-                        scores[c] += s
-                    else:
-                        scores[c] = s
+                    scores[c] += s
+        
         
         totals = scores.items()
         totals.sort(key= lambda s:s[1], reverse=True)
