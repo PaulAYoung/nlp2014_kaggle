@@ -1,4 +1,6 @@
 
+# coding: utf-8
+
 # In[1]:
 
 import re
@@ -83,7 +85,7 @@ def get_folds(samples, folds=3):
     return out
 
 
-# In[8]:
+# In[7]:
 
 stopwords = nltk.corpus.stopwords.words('english')
 
@@ -92,7 +94,7 @@ def get_terms(t):
     return [w for w in tokens if w not in stopwords]
 
 
-# In[9]:
+# In[8]:
 
 def create_training_sets (feature_function, items):
     # Create the features sets.  Call the function that was passed in.
@@ -105,7 +107,7 @@ def create_training_sets (feature_function, items):
     return train_set, test_set
 
 
-# In[10]:
+# In[9]:
 
 def make_classifier(feature_extractor, train, classifier=nltk.classify.NaiveBayesClassifier):
     """
@@ -120,7 +122,7 @@ def make_classifier(feature_extractor, train, classifier=nltk.classify.NaiveBaye
 
 # In[11]:
 
-def fold_test_extractor(feature_extractor, samples, folds=3):
+def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.NaiveBayesClassifier.train):
     """
     Tests a feature extractor with a set of sample tuples in format (category, text)
 
@@ -128,6 +130,7 @@ def fold_test_extractor(feature_extractor, samples, folds=3):
     feature_extractor -- The feature extractor function to use
     samples -- the samples to test with
     folds -- the number of folds to use in testing
+    classifier--classification method
     """
     
     features = [(feature_extractor(text), category) for category, text in samples]
@@ -137,7 +140,7 @@ def fold_test_extractor(feature_extractor, samples, folds=3):
         train = [f for idx, s in enumerate(folds) for f in s if idx !=i]
         test = folds[i]
         
-        cl = nltk.NaiveBayesClassifier.train(train)
+        cl = make_classifier(feature_extractor, samples, classifier)
         print "test {} - {:.3%}".format(i, nltk.classify.accuracy(cl, test))
 
 
@@ -163,7 +166,7 @@ def make_feature(extractor, samples):
     return [(extractor(text), category) for category, text in samples]
 
 
-# In[7]:
+# In[2]:
 
 class FeatureExtractor(object):
     """A class to make it easy to combine and shuffle around feature extractors"""
@@ -203,8 +206,8 @@ class FeatureExtractor(object):
             print "Extractor: {}".format(e.__name__)
             fold_test_extractor(e, samples, folds)
     
-    def test(self, samples, folds=3):
-        fold_test_extractor(self, samples, folds)
+    def test(self, samples, folds=3, method=nltk.NaiveBayesClassifier.train):
+        fold_test_extractor(self, samples, folds, method)
     
     def get_classifier(self, samples, classifier=nltk.classify.NaiveBayesClassifier):
         """
