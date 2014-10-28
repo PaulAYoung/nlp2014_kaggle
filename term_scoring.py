@@ -1,5 +1,7 @@
 
-# In[2]:
+# coding: utf-8
+
+# In[5]:
 
 import re
 import random
@@ -8,7 +10,7 @@ from os import path
 import nltk
 
 
-# In[3]:
+# In[6]:
 
 class TermScoreClassiffier(nltk.classify.ClassifierI):
     """
@@ -33,23 +35,29 @@ class TermScoreClassiffier(nltk.classify.ClassifierI):
         self.key = key
         self.__name__ = name
         
-        if samples and scorer:
-            terms = scorer(samples)
+        self.scorer = scorer
         
-        if not terms:
-            raise ValueError("You must either pass a list of samples or a list of terms")
+        if samples and self.scorer:
+            self.train(samples)
+        else:
+            self.terms = terms
         
-        self.terms = terms
+    def train(self, samples):
+        self.terms = self.scorer(samples)
     
     def __call__(self, text):
         """
         Picks a category for text using the term list
         """
         
+        if not self.terms:
+            raise ValueError("You must train the scorer")
+        
         tokens = nltk.word_tokenize(text)
         scores = {}
         
         for c in self.terms.values()[0].keys():
+            del self.terms
             scores[c]=0
         
         for w in tokens:
@@ -64,7 +72,7 @@ class TermScoreClassiffier(nltk.classify.ClassifierI):
         return {self.key: totals[0][0]}
 
 
-# In[3]:
+# In[7]:
 
 class TermScoreBagger(TermScoreClassiffier):
     """

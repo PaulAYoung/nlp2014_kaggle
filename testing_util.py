@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[27]:
 
 import re
 import random
@@ -9,14 +9,16 @@ from os import path
 
 import nltk
 
+import term_scoring
 
-# In[2]:
+
+# In[15]:
 
 path_train = path.join(path.curdir, "train.txt")
 path_final_testing = path.join(path.curdir, "test.csv")
 
 
-# In[3]:
+# In[16]:
 
 def file_to_sets(fname, ignore_header=True):
     """
@@ -39,13 +41,13 @@ def file_to_sets(fname, ignore_header=True):
     return out
 
 
-# In[4]:
+# In[17]:
 
 sample_sets = file_to_sets(path_train, ignore_header=False)
 final_sets = file_to_sets(path_final_testing, ignore_header=True)
 
 
-# In[5]:
+# In[18]:
 
 def get_sets(samples, test_fraction=3):
     """
@@ -64,7 +66,7 @@ def get_sets(samples, test_fraction=3):
     return train_sets, test_sets
 
 
-# In[6]:
+# In[19]:
 
 def get_folds(samples, folds=3):
     """
@@ -85,7 +87,7 @@ def get_folds(samples, folds=3):
     return out
 
 
-# In[7]:
+# In[20]:
 
 stopwords = nltk.corpus.stopwords.words('english')
 
@@ -94,7 +96,7 @@ def get_terms(t):
     return [w for w in tokens if w not in stopwords]
 
 
-# In[8]:
+# In[21]:
 
 def create_training_sets (feature_function, items):
     # Create the features sets.  Call the function that was passed in.
@@ -107,7 +109,7 @@ def create_training_sets (feature_function, items):
     return train_set, test_set
 
 
-# In[9]:
+# In[22]:
 
 def make_classifier(feature_extractor, train, classifier=nltk.classify.NaiveBayesClassifier):
     """
@@ -120,7 +122,7 @@ def make_classifier(feature_extractor, train, classifier=nltk.classify.NaiveBaye
     return cl
 
 
-# In[11]:
+# In[23]:
 
 def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.NaiveBayesClassifier.train):
     """
@@ -133,18 +135,29 @@ def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.Nai
     classifier--classification method
     """
     
-    features = [(feature_extractor(text), category) for category, text in samples]
-    folds = get_folds(features, folds)
+    folds = get_folds(samples, folds)
     
     for i in range(0, len(folds)):
-        train = [f for idx, s in enumerate(folds) for f in s if idx !=i]
-        test = folds[i]
+        train_sets = [f for idx, s in enumerate(folds) for f in s if idx !=i]
         
-        cl = make_classifier(feature_extractor, samples, classifier)
+        if isinstance(feature_extractor, FeatureExtractor):
+            feature_extractor.train_extractors(train_sets)
+        
+        if isinstance(feature_extractor, term_scoring.TermScoreBagger):
+            feature_extractor.train(train_sets)
+        
+        train = [(feature_extractor(text), category) for category, text in train_sets]
+        test = [(feature_extractor(text), category) for category, text in  folds[i]]
+        
+        if type(feature_extractor) is FeatureExtractor:
+            cl = feature_extractor.get_classifier(samples, classifier)
+        else:
+            cl = make_classifier(feature_extractor, samples, classifier)
+            
         print "test {} - {:.3%}".format(i, nltk.classify.accuracy(cl, test))
 
 
-# In[12]:
+# In[24]:
 
 def make_submission(classifier, samples, writeto=None):
     out = []
@@ -160,13 +173,13 @@ def make_submission(classifier, samples, writeto=None):
     return out
 
 
-# In[13]:
+# In[25]:
 
 def make_feature(extractor, samples):
     return [(extractor(text), category) for category, text in samples]
 
 
-# In[2]:
+# In[26]:
 
 class FeatureExtractor(object):
     """A class to make it easy to combine and shuffle around feature extractors"""
@@ -185,6 +198,7 @@ class FeatureExtractor(object):
         
         self.__name__ = name
         self.extractors = extractors
+        self.trained_extractors = []
         
     def __call__(self, text):
         features = {}
@@ -193,26 +207,48 @@ class FeatureExtractor(object):
             for k, v in f.iteritems():
                 features[k]=v
         
+        for e in self.trained_extractors:
+            f = e(text)
+            for k, v in f.iteritems():
+                features[k]=v
+        
         return features
     
-    def add_extractor(self,extractor):
-        self.extractors.append(extractor)
+    def add_extractor(self,extractor, trained=False):
+        if trained==True:
+            self.trained_extractors.append(extractor)
+        else:
+            self.extractors.append(extractor)
     
-    def test_extractors(self, samples, folds=3):
+    def train_extractors(self, samples):
+        for t in self.trained_extractors:
+            t.train(samples)
+    
+    def test_extractors(self, samples, folds=3, classifier=nltk.NaiveBayesClassifier):
         """
         Runs a test of each individual extractor using samples to train and test. 
         """
+        
         for e in self.extractors:
             print "Extractor: {}".format(e.__name__)
-            fold_test_extractor(e, samples, folds)
+            fold_test_extractor(e, samples, folds, classifier=classifier)
+        
+        for e in self.trained_extractors:
+            print "Extractor: {}".format(e.__name__)
+            fold_test_extractor(e, samples, folds, classifier=classifier)
     
-    def test(self, samples, folds=3, method=nltk.NaiveBayesClassifier.train):
-        fold_test_extractor(self, samples, folds, method)
+    def test(self, samples, folds=3, method=nltk.NaiveBayesClassifier.train, num_tests=1):
+        for i in range(0, num_tests):
+            print "**************************"
+            print "Run {}".format(i)
+            print "**************************"
+            fold_test_extractor(self, samples, folds, method)
     
     def get_classifier(self, samples, classifier=nltk.classify.NaiveBayesClassifier):
         """
         Creates a classifier based on the extractor, using samples to train and the classifier as the
         method.
         """
+        self.train_extractors(samples)
         return make_classifier(self, samples, classifier)
 
