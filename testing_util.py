@@ -141,7 +141,7 @@ def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.Nai
         test = [(feature_extractor(text), category) for category, text in  folds[i]]
         
         if type(feature_extractor) is FeatureExtractor:
-            cl = feature_extractor.get_classifier(samples, classifier)
+            cl = feature_extractor.get_classifier(samples, classifier, retrain=False)
         else:
             cl = make_classifier(feature_extractor, samples, classifier)
             
@@ -238,11 +238,29 @@ class FeatureExtractor(object):
             print "**************************"
             fold_test_extractor(self, samples, folds, classifier, **kwargs)
     
-    def get_classifier(self, samples, classifier=nltk.classify.NaiveBayesClassifier):
+    def get_classifier(self, samples, classifier=nltk.classify.NaiveBayesClassifier, retrain=True):
         """
         Creates a classifier based on the extractor, using samples to train and the classifier as the
         method.
         """
-        self.train_extractors(samples)
+        if retrain:
+            self.train_extractors(samples)
         return make_classifier(self, samples, classifier)
+    
+    def show_errors(self, samples, classifier=nltk.classify.NaiveBayesClassifier, folds=10):
+        folds = get_folds(samples, folds=folds)
+        train_sets = [f for s in folds[1:] for f in s]
+        test_sets = folds[0]
+        
+        self.train_extractors(train_sets)
+        
+        cl = self.get_classifier(train_sets, classifier=classifier, retrain=False)
+        
+        errors = []
+        for tag, text in test_sets:
+            guess = cl.classify(self(text))
+            if guess != tag:
+                errors.append((guess, tag, text))
+                
+        return errors
 
