@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
+# <nbformat>3.0</nbformat>
 
-# coding: utf-8
-
-# In[27]:
+# <codecell>
 
 import re
 import random
@@ -11,14 +11,12 @@ import nltk
 
 import term_scoring
 
-
-# In[15]:
+# <codecell>
 
 path_train = path.join(path.curdir, "train.txt")
 path_final_testing = path.join(path.curdir, "test.csv")
 
-
-# In[16]:
+# <codecell>
 
 def file_to_sets(fname, ignore_header=True):
     """
@@ -40,14 +38,12 @@ def file_to_sets(fname, ignore_header=True):
     f.close()
     return out
 
-
-# In[17]:
+# <codecell>
 
 sample_sets = file_to_sets(path_train, ignore_header=False)
 final_sets = file_to_sets(path_final_testing, ignore_header=True)
 
-
-# In[18]:
+# <codecell>
 
 def get_sets(samples, test_fraction=3):
     """
@@ -65,8 +61,7 @@ def get_sets(samples, test_fraction=3):
     
     return train_sets, test_sets
 
-
-# In[19]:
+# <codecell>
 
 def get_folds(samples, folds=3):
     """
@@ -86,8 +81,7 @@ def get_folds(samples, folds=3):
     
     return out
 
-
-# In[20]:
+# <codecell>
 
 stopwords = nltk.corpus.stopwords.words('english')
 
@@ -95,8 +89,7 @@ def get_terms(t):
     tokens = nltk.word_tokenize(t)
     return [w for w in tokens if w not in stopwords]
 
-
-# In[21]:
+# <codecell>
 
 def create_training_sets (feature_function, items):
     # Create the features sets.  Call the function that was passed in.
@@ -108,8 +101,7 @@ def create_training_sets (feature_function, items):
     train_set, test_set = featuresets[halfsize:], featuresets[:halfsize]
     return train_set, test_set
 
-
-# In[22]:
+# <codecell>
 
 def make_classifier(feature_extractor, train, classifier=nltk.classify.NaiveBayesClassifier):
     """
@@ -121,10 +113,9 @@ def make_classifier(feature_extractor, train, classifier=nltk.classify.NaiveBaye
     cl = classifier.train(train_features)
     return cl
 
+# <codecell>
 
-# In[23]:
-
-def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.NaiveBayesClassifier.train):
+def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.NaiveBayesClassifier.train, confusion=False, **kwargs):
     """
     Tests a feature extractor with a set of sample tuples in format (category, text)
 
@@ -155,9 +146,14 @@ def fold_test_extractor(feature_extractor, samples, folds=3, classifier=nltk.Nai
             cl = make_classifier(feature_extractor, samples, classifier)
             
         print "test {} - {:.3%}".format(i, nltk.classify.accuracy(cl, test))
+        
+        if confusion:
+            results = [cl.classify(i[0]) for i in test]
+            reference = [i[1] for i in test]
+            cm = nltk.ConfusionMatrix(reference, results)
+            print(cm.pp(sort_by_count=True, show_percents=True, truncate=9))
 
-
-# In[24]:
+# <codecell>
 
 def make_submission(classifier, samples, writeto=None):
     out = []
@@ -172,14 +168,12 @@ def make_submission(classifier, samples, writeto=None):
     
     return out
 
-
-# In[25]:
+# <codecell>
 
 def make_feature(extractor, samples):
     return [(extractor(text), category) for category, text in samples]
 
-
-# In[26]:
+# <codecell>
 
 class FeatureExtractor(object):
     """A class to make it easy to combine and shuffle around feature extractors"""
@@ -237,12 +231,12 @@ class FeatureExtractor(object):
             print "Extractor: {}".format(e.__name__)
             fold_test_extractor(e, samples, folds, classifier=classifier)
     
-    def test(self, samples, folds=3, method=nltk.NaiveBayesClassifier.train, num_tests=1):
+    def test(self, samples, folds=3, classifier=nltk.NaiveBayesClassifier.train, num_tests=1, **kwargs):
         for i in range(0, num_tests):
             print "**************************"
             print "Run {}".format(i)
             print "**************************"
-            fold_test_extractor(self, samples, folds, method)
+            fold_test_extractor(self, samples, folds, classifier, **kwargs)
     
     def get_classifier(self, samples, classifier=nltk.classify.NaiveBayesClassifier):
         """
