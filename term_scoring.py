@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
+# <nbformat>3.0</nbformat>
 
-# coding: utf-8
-
-# In[5]:
+# <codecell>
 
 import re
 import random
@@ -9,8 +9,7 @@ from os import path
 
 import nltk
 
-
-# In[6]:
+# <codecell>
 
 class TermScoreClassiffier(nltk.classify.ClassifierI):
     """
@@ -57,7 +56,6 @@ class TermScoreClassiffier(nltk.classify.ClassifierI):
         scores = {}
         
         for c in self.terms.values()[0].keys():
-            del self.terms
             scores[c]=0
         
         for w in tokens:
@@ -71,8 +69,7 @@ class TermScoreClassiffier(nltk.classify.ClassifierI):
         
         return {self.key: totals[0][0]}
 
-
-# In[7]:
+# <codecell>
 
 class TermScoreBagger(TermScoreClassiffier):
     """

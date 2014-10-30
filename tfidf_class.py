@@ -55,6 +55,25 @@ def get_cat_idfs(samples, termer, categories):
 
 # <codecell>
 
+def get_cat_idfs(samples, termer, categories):
+    out = {}
+    
+    for c in categories:
+        cat = {}
+        
+        cat_idf = get_idfs([s for s in samples if s[0]==c], termer)
+        other_idf = get_idfs([s for s in samples if s[0]!=c], termer)
+        
+        for t in cat_idf.keys():
+            score = cat_idf.freq(t)-other_idf.freq(t)
+            cat[t] = (t, score, cat_idf.freq(t), other_idf.freq(t))
+            
+        out[c]=cat
+            
+    return out
+
+# <codecell>
+
 default_categories = [str(x) for x in range(1,8)]
 
 class TfidfRater(object):
@@ -77,6 +96,38 @@ class TfidfRater(object):
         results = {}
         for t in self.helpful:
             results["has({})".format(t)] = 1 if t in terms else 0
+
+        return results
+
+# <codecell>
+
+class CatIDFRater(TfidfRater):
+    
+    def train(self, samples):
+        cat_idfs = get_cat_idfs(samples, self.termer, self.categories)
+        self.helpful = set()
+        for i in self.categories:
+            cterms = cat_idfs[i].items()
+            cterms.sort(key = lambda v: v[1], reverse=True)
+            self.helpful.update([w[0] for w in cterms[0:self.nterms]])
+
+# <codecell>
+
+class CatIDFScorer(TfidfRater):
+    
+    def train(self, samples):
+        self.cat_idfs = get_cat_idfs(samples, self.termer, self.categories)
+    
+    def __call__(self, text):
+        terms = self.termer(text)
+        results = {"score({})".format(c):0 for c in self.categories}
+        for t in terms:
+            for c in self.categories:
+                if t in self.cat_idfs[c]:
+                    results["score({})".format(c)] += self.cat_idfs[c][t][1]
+                else:
+                    others = [cat[t][1] for cat in self.cat_idfs if t in cat]
+                    results["score({})".format(c)] += -(sum(others)/(len(others)+1))
 
         return results
 
