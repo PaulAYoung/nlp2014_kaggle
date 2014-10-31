@@ -13,8 +13,18 @@ from testing_util import sample_sets
 
 def get_idfs(samples, termer):
     sample_terms = [list(set(termer(s[1]))) for s in samples]
-    tdf = nltk.FreqDist(t for l in sample_terms for t in l)
-    return tdf
+    nsamps = len(samples)
+    idf = {}
+    for term in [t for s in sample_terms for t in s]:
+        if term in idf:
+            idf[term] += 1
+        else:
+            idf[term] = 1
+    
+    for k,v in idf.iteritems():
+        idf[k]=float(v)/nsamps
+        
+    return idf
 
 # <codecell>
 
@@ -41,32 +51,14 @@ def get_cat_idfs(samples, termer, categories):
     for c in categories:
         cat = []
         
-        cat_idf = tfidf_class.get_idfs([s for s in samples if s[0]==c], termer)
-        other_idf = tfidf_class.get_idfs([s for s in samples if s[0]!=c], termer)
-        
-        for t in cat_idf.keys():
-            score = cat_idf.freq(t)-other_idf.freq(t)
-            cat.append((t, score, cat_idf.freq(t), other_idf.freq(t)))
-            cat.sort(key= lambda e: e[1], reverse=True)
-            
-        out[c]=cat
-            
-    return out
-
-# <codecell>
-
-def get_cat_idfs(samples, termer, categories):
-    out = {}
-    
-    for c in categories:
-        cat = {}
-        
         cat_idf = get_idfs([s for s in samples if s[0]==c], termer)
         other_idf = get_idfs([s for s in samples if s[0]!=c], termer)
         
         for t in cat_idf.keys():
-            score = cat_idf.freq(t)-other_idf.freq(t)
-            cat[t] = (t, score, cat_idf.freq(t), other_idf.freq(t))
+            other = other_idf[t] if t in other_idf else 0
+            score = cat_idf[t]-other
+            cat.append((t, score, cat_idf[t], other))
+            cat.sort(key= lambda e: e[1], reverse=True)
             
         out[c]=cat
             

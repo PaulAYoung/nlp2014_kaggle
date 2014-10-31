@@ -175,6 +175,26 @@ def make_feature(extractor, samples):
 
 # <codecell>
 
+class WordSearcher(object):
+    def __init__(self, wordlist=None, key="", name="wordsearcher"):
+        self.wordlist = wordlist if wordlist else []
+        self.key = key
+        self.name=name
+    
+    def add(self, wordlist):
+        self.wordlist.extend(wordlist)
+    
+    def clear(self):
+        self.wordlist = []
+    
+    def __call__(self, text):
+        out = {}
+        for word in self.wordlist:
+            out["{}has({})".format(self.key, word)] = 1 if re.search(word, text, re.IGNORECASE) else 0
+        return out
+
+# <codecell>
+
 class FeatureExtractor(object):
     """A class to make it easy to combine and shuffle around feature extractors"""
     
