@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
 
-# <codecell>
+# coding: utf-8
+
+# In[7]:
 
 import math
 import cPickle as pickle
@@ -9,7 +9,8 @@ import nltk
 
 from testing_util import sample_sets
 
-# <codecell>
+
+# In[2]:
 
 def get_idfs(samples, termer):
     sample_terms = [list(set(termer(s[1]))) for s in samples]
@@ -26,7 +27,8 @@ def get_idfs(samples, termer):
         
     return idf
 
-# <codecell>
+
+# In[3]:
 
 def get_tfidfs(samples, termer, categories):
     idf = get_idfs(samples, termer)
@@ -37,13 +39,14 @@ def get_tfidfs(samples, termer, categories):
         fd = nltk.FreqDist([t for s in sample_sets for t in termer(s[1]) if s[0]==str(i)])
 
         for t in fd.keys():
-            tfidfs[t]=fd.freq(t)/(idf[t] +1)
+            tfidfs[t]=fd.freq(t)/(idf[t]+1 if t in idf else 1)
 
         cat_tfidfs[i]=tfidfs
     
     return cat_tfidfs
 
-# <codecell>
+
+# In[1]:
 
 def get_cat_idfs(samples, termer, categories):
     out = {}
@@ -64,7 +67,8 @@ def get_cat_idfs(samples, termer, categories):
             
     return out
 
-# <codecell>
+
+# In[6]:
 
 default_categories = [str(x) for x in range(1,8)]
 
@@ -91,7 +95,8 @@ class TfidfRater(object):
 
         return results
 
-# <codecell>
+
+# In[ ]:
 
 class CatIDFRater(TfidfRater):
     
@@ -99,11 +104,10 @@ class CatIDFRater(TfidfRater):
         cat_idfs = get_cat_idfs(samples, self.termer, self.categories)
         self.helpful = set()
         for i in self.categories:
-            cterms = cat_idfs[i].items()
-            cterms.sort(key = lambda v: v[1], reverse=True)
             self.helpful.update([w[0] for w in cterms[0:self.nterms]])
 
-# <codecell>
+
+# In[8]:
 
 class CatIDFScorer(TfidfRater):
     
